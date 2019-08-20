@@ -5,5 +5,5 @@ Para começar, você precisará inserir o IP e Port Number para se conectar a um
 
 # Requerimento:
 Python 3.x
-
+Keyboard Lib
 
