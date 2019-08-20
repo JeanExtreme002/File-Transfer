@@ -28,7 +28,7 @@ port = None
 # Pergunta ao usuário se ele deseja enviar ou fazer 
 # download de um arquivo e aguarda a sua resposta.
 
-print(" What do you want to do ?\n 1: Upload\n 2: Download")
+print("\n What do you want to do ?\n 1: Upload\n 2: Download")
 
 while not mode:
     if keyboard.is_pressed("1"):
