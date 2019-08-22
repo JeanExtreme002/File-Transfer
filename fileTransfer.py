@@ -2,10 +2,17 @@ from os.path import exists,getsize,normpath,split
 import socket
 import io
 
-class BlockedExchangesException(Exception):
+class ActiveConnectionException(Exception):
     def __str__(self):
-        return "Once you have made the connection, you will not be able to make changes to the file name or mode."
+        return "Once you have made the connection, you will not be able to create a new connection or make changes to the file name or transfer mode until the connection is terminated."
 
+class IncompleteTransferError(Exception):
+    def __str__(self):
+        return "The transfer was not completed successfully."
+
+class NoConnectionException(Exception):
+    def __str__(self):
+        return "You must first start a connection."
 
 class FileTransfer(object):
     __CLIENT = 0
@@ -18,12 +25,16 @@ class FileTransfer(object):
     OK = __OK
     END = __END
 
-    __blockedExchanges = False
+    MODE = None
+    PATH = None
+    FILENAME = None
+
+    __connected = False
     __stop = False
     __running = False
 
 
-    def __init__(self,filename=None,path=None,mode=CLIENT,family=socket.AF_INET,type_=socket.SOCK_STREAM):
+    def __init__(self,filename=None,path=None,mode=CLIENT):
         """
         Os parâmetros "filename" e "path" são obrigatórios antes da chamada 
         dos métodos "connect" e "transfer".
@@ -31,7 +42,7 @@ class FileTransfer(object):
         Caso o tipo de transferência seja UPLOAD, será obrigatório 
         passar o caminho do arquivo no parâmetro "filename".
         Caso o tipo de transferência seja DOWNLOAD, será obrigatório 
-        passar o um diretório para salvar o arquivo no parâmetro "path".
+        passar um diretório para salvar o arquivo no parâmetro "path".
 
         O parâmetro "mode" deve ser FileTransfer.CLIENT ou FileTransfer.HOST.
         """
@@ -39,26 +50,18 @@ class FileTransfer(object):
         self.changeMode(mode)
         self.changeFileName(filename)
         self.changePath(path)
-        self.__socket = socket.socket(family,type_)
-
-
-    def __blockExchanges(self):
-        """
-        Uma vez chamado este método, todos os métodos para 
-        troca de informações serão bloquados.
-        """
-        self.__blockedExchanges = True
 
 
     def changeFileName(self,filename):
         """
         Método para trocar o nome do arquivo.
         """
-        if self.__blockedExchanges:
-            raise BlockedExchangesException
+        if self.__connected:
+            raise ActiveConnectionException
 
         if not filename or exists(filename):
             self.__filename = filename
+            self.FILENAME = self.__filename
         else: raise FileNotFoundError
 
 
@@ -66,23 +69,25 @@ class FileTransfer(object):
         """
         Método para trocar o modo de transferência.
         """
-        if self.__blockedExchanges: 
-            raise BlockedExchangesException
+        if self.__connected: 
+            raise ActiveConnectionException
 
         if mode in [self.__CLIENT,self.__HOST]:
             self.__mode = mode
-        else: raise ValueError
+            self.MODE = self.__mode
+        else: raise ValueError("The mode parameter must be FileTransfer.CLIENT or FileTransfer.HOST")
 
 
     def changePath(self,path):
         """
         Método para trocar o diretório para salvar o arquivo baixado.
         """
-        if self.__blockedExchanges:
-            raise BlockedExchangesException
+        if self.__connected:
+            raise ActiveConnectionException
 
         if not path or exists(path):
             self.__path = path
+            self.PATH = self.__path
         else: raise FileNotFoundError
 
 
@@ -92,31 +97,35 @@ class FileTransfer(object):
         """
         self.__stop = True
         self.__socket.close()
-        self.__blockedExchanges = True
         self.__running = False
+        self.__connected = False
 
 
-    def connect(self,address):
+    def connect(self,address,family=socket.AF_INET,type_=socket.SOCK_STREAM):
         """
         Método para conectar-se. O parâmetro "address" deve ser uma 
         sequência contendo o IP e PORT NUMBER.
 
         Caso o tipo de conexão seja CLIENT, será retornado o nome do 
-        arquivo e seu tamanho em bytes. Exemplo: ["hello world.txt",987].
+        arquivo e seu tamanho em bytes. Exemplo: ["hello world.txt","987"].
         Caso o tipo de conexão seja HOST, será retornado o endereço do Client.
         """
 
-        if self.__running: return
-        self.__stop = False
+
+        if self.__connected:
+            raise ActiveConnectionException
+
+        self.__socket = socket.socket(family,type_)
 
         if self.__mode == self.CLIENT:
-            if not self.__path: raise TypeError("You must define a directory to save the file to.")
+            
+            # Verifica se existe um diretório para salvar o arquivo que será baixado
+            if not self.__path: 
+                raise TypeError("You must define a directory to save the file to.")
             
             # Realiza a conexão com o servidor
             self.__socket.connect(address)
-
-            # Bloqueia métodos de troca de informação
-            self.__blockExchanges()
+            self.__connected = True
 
             # Recebe o nome e o tamanho do arquivo em bytes no formato b'filename?size'
             transferInfo = self.__socket.recv(1024).decode().split("?")
@@ -127,7 +136,10 @@ class FileTransfer(object):
             return transferInfo
 
         elif self.__mode == self.HOST:
-            if not self.__filename: raise TypeError("You must set a file name to upload.")
+
+            # Verifica se existe um arquivo definido para enviar
+            if not self.__filename: 
+                raise TypeError("You must set a file name to upload.")
             
             # Cria o servidor
             self.__socket.bind(address)
@@ -135,9 +147,7 @@ class FileTransfer(object):
 
             # Obtêm a conexão e os dados do client
             newSocket,clientInfo = self.__socket.accept()
-
-            # Bloqueia métodos de troca de informação
-            self.__blockExchanges()
+            self.__connected = True
 
             # Fecha a conexão antiga e o socket passa a ser a conexão com o usuário
             self.__socket.close()
@@ -176,7 +186,12 @@ class FileTransfer(object):
         """
 
         if self.__running: return
+
+        if not self.__connected:
+            raise NoConnectionException
+
         self.__running = True
+        self.__stop = False
 
         if self.__mode == self.CLIENT:
 
@@ -191,7 +206,10 @@ class FileTransfer(object):
             self.__socket.send(self.__OK.encode())
 
             while not self.__stop:
-                data = self.__socket.recv(1024)
+                try:
+                    data = self.__socket.recv(1024)
+                except:
+                    break
                 
                 # Sai do bloco while caso o dado informe que este é o fim da transferência
                 if data == self.__END.encode():
@@ -210,10 +228,13 @@ class FileTransfer(object):
             # Fecha o buffer e o arquivo
             bufferedWriter.flush()
             bufferedWriter.close()
+            self.__running = False
 
             # Informa que a transferência foi finalizada com sucesso.
             if data == self.__END.encode():
                 return self.__OK
+            else: 
+                raise IncompleteTransferError
 
         elif self.__mode == self.HOST:
 
@@ -232,7 +253,10 @@ class FileTransfer(object):
             # Começa a enviar os dados do arquivo
             for data in bufferedReader.readlines():
                 if self.__stop: break
-                self.__socket.send(data)
+                try:
+                    self.__socket.send(data)
+                except:
+                    raise IncompleteTransferError
 
                 # Soma a quantidade de bytes enviados
                 sent+=len(data)
@@ -246,6 +270,7 @@ class FileTransfer(object):
 
             # Fecha o buffer e o arquivo
             bufferedReader.close()
+            self.__running = False
 
             # Informa que a transferência foi finalizada com sucesso
             return self.__OK
