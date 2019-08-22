@@ -209,6 +209,7 @@ class FileTransfer(object):
             while not self.__stop:
                 try:
                     data = self.__socket.recv(1024)
+                    if not data: break
                 except:
                     break
                 
@@ -249,7 +250,16 @@ class FileTransfer(object):
 
             # Aguarda uma confirmação para começar a enviar os dados
             while confirmation != self.__OK and not self.__stop:
-                confirmation = self.__socket.recv(1024).decode()
+                try:
+                    confirmation = self.__socket.recv(1024).decode()
+                    if not confirmation: break
+                except: 
+                    break
+
+            # Verifica se há ou não uma confirmação do cliente
+            if confirmation != self.__OK and not self.__stop: 
+                raise IncompleteTransferError
+            elif self.__stop: return
             
             # Começa a enviar os dados do arquivo
             for data in bufferedReader.readlines():

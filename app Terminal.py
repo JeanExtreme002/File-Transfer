@@ -1,6 +1,10 @@
 from fileTransfer import FileTransfer
-import keyboard
 import os
+
+try:
+    import keyboard
+except ModuleNotFoundError:
+    keyboard = None
 
 def showProgress(percent,size=25):
     """
@@ -30,13 +34,19 @@ port = None
 
 print("\n What do you want to do ?\n 1: Upload\n 2: Download")
 
-while not mode:
-    if keyboard.is_pressed("1"):
-        mode = 1
-    elif keyboard.is_pressed("2"):
-        mode = 2
-keyboard.press("backspace")
-
+if keyboard:
+    while not mode:
+        if keyboard.is_pressed("1"):
+            mode = 1
+        elif keyboard.is_pressed("2"):
+            mode = 2
+    keyboard.press("backspace")
+else:
+    while not mode:
+        mode = input("\n Option: ")
+        if mode in ("1","2"):
+            mode = int(mode)
+        else: mode = None
 
 # Pede para que o usuário insira o IP e o PORT NUMBER, 
 # verificando se o PORT é válido.
@@ -136,29 +146,43 @@ else:
     print('\n Do you want to download "%s" [%.2f %s] ? (Y/N)'%(filename,size[0],size[1]))
 
     # Aguarda pela resposta do usuário.
-    resp = None
-    while not resp:
-        if keyboard.is_pressed("y") or keyboard.is_pressed("Y"):
-            resp = 1
-        if keyboard.is_pressed("n") or keyboard.is_pressed("N"):
-            resp = 0
-    keyboard.press("backspace")
+    confirmation = None
+
+    if keyboard:
+        while not confirmation:
+            if keyboard.is_pressed("y") or keyboard.is_pressed("Y"):
+                confirmation = 1
+            if keyboard.is_pressed("n") or keyboard.is_pressed("N"):
+                confirmation = 2
+        keyboard.press("backspace")
+
+    else:
+        while not confirmation:
+            confirmation = input("\n Your decision: ").lower()
+
+            if confirmation == "y":
+                confirmation = 1
+            elif confirmation == "n":
+                confirmation = 2
+            else:
+                confirmation = None
+            
 
     # Fecha a conexão e o programa caso o usuário não aceite o arquivo.
-    if resp == 0:
+    if confirmation == 2:
         fileTransfer.close()
-        quit()
 
-    # Inicializa a transferência.
-    try:
-        fileTransfer.transfer(showProgress)
-        print("")
-        input("\n Transfer completed successfully.\n\n")
-    except:
-        print("")
-        input("\n A failure occurred during the transfer.\n\n")
-    finally:
-        fileTransfer.close()
+    else:
+        # Inicializa a transferência.
+        try:
+            fileTransfer.transfer(showProgress)
+            print("")
+            input("\n Transfer completed successfully.\n\n")
+        except:
+            print("")
+            input("\n A failure occurred during the transfer.\n\n")
+        finally:
+            fileTransfer.close()
 
 
 
