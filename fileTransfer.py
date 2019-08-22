@@ -50,6 +50,7 @@ class FileTransfer(object):
         self.changeMode(mode)
         self.changeFileName(filename)
         self.changePath(path)
+        self.__socket = socket.socket()
 
 
     def changeFileName(self,filename):
