@@ -1,9 +1,5 @@
-# Sobre o programa:
+# About the program:
 
-Envie ou baixe imagens, músicas, vídeos e outros tipos de arquivos utilizando este programa com uma interface gráfica de usuário ou em terminal. <br />
-Para começar, você precisará inserir o IP e Port Number para se conectar a um servidor ou criar um servidor e escolher se deseja enviar ou baixar um arquivo. Depois disso selecione o arquivo que deseja enviar (apenas um arquivo por vez) ou pasta para salvar o arquivo baixado.
-
-# Requerimento:
-Python 3.x <br />
-Keyboard Lib
+Upload or download images, music, videos and other file types using this program with a graphical user interface or terminal. <br />
+To get started, you will need to enter the IP and Port Number to connect to a server or create a server and choose whether to upload or download a file. After that select the file you want to upload (only one file at a time) or folder to save the downloaded file.
 
