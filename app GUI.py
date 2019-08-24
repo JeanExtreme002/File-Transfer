@@ -7,21 +7,36 @@ import os
 
 class App(object):
 
-    button_width = 10
-    entry_font = ("Arial",20)
-    filename_size = 20
-    label_font = ("Arial",15)
     screen_background = "#EAEAAE"
-    screen_geometry = (600,100)
     screen_resizable = (False,False)
     screen_title = "File Transfer GUI"
 
     __address = None
     __path = None
     __mode = FileTransfer.CLIENT
-    __sep = 5
+
 
     def __init__(self):
+        
+        # Obtém a largura da tela do dispositivo do usuário
+        self.__window = Tk()
+        width = self.__window.winfo_screenwidth()
+        default_width = 600
+        self.__window.destroy()
+
+        # Define o tamanho da janela do programa
+        if width >= default_width:
+            self.screen_geometry = [default_width,int(0.16666666666666666666666666666667*default_width)]
+        else:
+            self.screen_geometry = [width,int(0.16666666666666666666666666666667*width)]
+
+        # Ajusta o tamanho de fonte, largura e outros com base na resolução da janela do programa
+        self.button_font = ("Arial",int(15/default_width*self.screen_geometry[0]))
+        self.button_width = int(10/default_width*self.screen_geometry[0])
+        self.entry_font = ("Arial",int(20/default_width*self.screen_geometry[0]))
+        self.filename_size = int(20/default_width*self.screen_geometry[0])
+        self.label_font = ("Arial",int(15/default_width*self.screen_geometry[0]))
+        self.__sep = int(5/default_width*self.screen_geometry[0])
 
         # Cria um objeto para realizar a transferência
         self.fileTransfer = FileTransfer()
@@ -50,8 +65,8 @@ class App(object):
 
         # Cria estilos dos botões do programa
         self.__style = Style()
-        self.__style.configure("SELECTED.TButton",background=self.screen_background,foreground="red",font=("arial",15),width=self.button_width)
-        self.__style.configure("TButton",background=self.screen_background,foreground="black",font=("arial",15),width=self.button_width)
+        self.__style.configure("SELECTED.TButton",background=self.screen_background,foreground="red",font=self.button_font,width=self.button_width)
+        self.__style.configure("TButton",background=self.screen_background,foreground="black",font=self.button_font,width=self.button_width)
 
 
     def buildInterfaceToCreateConnection(self):

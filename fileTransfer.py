@@ -154,7 +154,7 @@ class FileTransfer(object):
             self.__socket.close()
             self.__socket = newSocket
 
-            # Obtêm o tamanho do arquivo a ser enviado
+            # Obtém o tamanho do arquivo a ser enviado
             self.__size = getsize(self.__filename)
 
             # Envia para o client o nome do arquivo e o tamanho em bytes no formato b'filename?size' 
