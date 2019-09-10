@@ -172,7 +172,7 @@ class FileTransfer(object):
         types = ["Bytes","KB","MB","GB","TB"]
         index = 0
 
-        while bytes_ > 1024 and index < len(types):
+        while bytes_ > 1024 and index < len(types)-1:
             bytes_ /= 1024
             index += 1
         return bytes_,types[index]
